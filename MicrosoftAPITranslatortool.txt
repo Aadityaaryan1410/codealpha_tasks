@@ -1,0 +1,90 @@
+import React, { useState } from "react";
+import axios from "axios";
+
+const languages = [
+  { code: "en", name: "English" },
+  { code: "hi", name: "Hindi" },
+  { code: "es", name: "Spanish" },
+  { code: "fr", name: "French" },
+  { code: "de", name: "German" },
+  { code: "zh-Hans", name: "Chinese (Simplified)" },
+];
+
+export default function App() {
+  const [text, setText] = useState("");
+  const [translatedText, setTranslatedText] = useState("");
+  const [sourceLang, setSourceLang] = useState("en");
+  const [targetLang, setTargetLang] = useState("hi");
+
+  const translateText = async () => {
+    try {
+      const response = await axios.post(
+        `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=${sourceLang}&to=${targetLang}`,
+        [{ Text: text }],
+        {
+          headers: {
+            "Ocp-Apim-Subscription-Key": "YOUR_AZURE_TRANSLATOR_KEY", // ⬅️ Replace this
+            "Ocp-Apim-Subscription-Region": "YOUR_REGION",             // ⬅️ Replace this (e.g., "centralindia")
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      setTranslatedText(response.data[0].translations[0].text);
+    } catch (error) {
+      console.error("Translation Error:", error);
+      setTranslatedText("⚠️ Microsoft Translator failed.");
+    }
+  };
+
+  return (
+    <div className="max-w-xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-4">💬 Microsoft Translator</h1>
+
+      <textarea
+        className="w-full p-2 border mb-4"
+        rows={4}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Enter text"
+      />
+
+      <div className="flex gap-2 mb-4">
+        <select
+          className="w-1/2 p-2 border"
+          value={sourceLang}
+          onChange={(e) => setSourceLang(e.target.value)}
+        >
+          {languages.map((lang) => (
+            <option key={lang.code} value={lang.code}>
+              From: {lang.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="w-1/2 p-2 border"
+          value={targetLang}
+          onChange={(e) => setTargetLang(e.target.value)}
+        >
+          {languages.map((lang) => (
+            <option key={lang.code} value={lang.code}>
+              To: {lang.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <button
+        className="w-full p-2 bg-green-600 text-white rounded"
+        onClick={translateText}
+      >
+        Translate
+      </button>
+
+      {translatedText && (
+        <div className="mt-4 p-3 bg-gray-100 rounded border">
+          <strong>Translated:</strong> {translatedText}
+        </div>
+      )}
+    </div>
+  );
+}
