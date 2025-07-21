@@ -1,0 +1,94 @@
+ 1. Install Required Libraries
+pip install sentence-transformers flask
+
+2. Prepare FAQs
+
+faq_data = [
+    {"question": "What is your return policy?", "answer": "You can return products within 30 days."},
+    {"question": "How can I track my order?", "answer": "Track using the link in your confirmation email."},
+    {"question": "Do you ship internationally?", "answer": "Yes, international shipping is available."},
+    {"question": "What payment methods do you support?", "answer": "We accept cards, PayPal, and UPI."},
+]
+
+ 3. Embed FAQs Using Sentence Transformers
+
+from sentence_transformers import SentenceTransformer, util
+
+model = SentenceTransformer('all-MiniLM-L6-v2')  # Lightweight and fast
+
+faq_questions = [item["question"] for item in faq_data]
+faq_embeddings = model.encode(faq_questions, convert_to_tensor=True)
+
+4. Get Response by Semantic Similarity
+
+def get_response(user_input):
+    user_embedding = model.encode(user_input, convert_to_tensor=True)
+    scores = util.pytorch_cos_sim(user_embedding, faq_embeddings)[0]
+    best_score_idx = scores.argmax().item()
+    confidence = scores[best_score_idx].item()
+
+    if confidence > 0.6:  # confidence threshold
+        return faq_data[best_score_idx]["answer"]
+    else:
+        return "I'm not sure about that. Could you rephrase your question?"
+
+ 5. Run Chatbot in Console
+
+print("Welcome to AI FAQ Bot! Ask a question or type 'exit'.")
+
+while True:
+    user_input = input("You: ")
+    if user_input.lower() == "exit":
+        break
+    print("Bot:", get_response(user_input))
+
+
+Optional: Creating a Simple Flask Web UI
+app.py
+
+
+from flask import Flask, request, jsonify, render_template
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return render_template("chat.html")
+
+@app.route("/ask", methods=["POST"])
+def ask():
+    user_input = request.json["message"]
+    response = get_response(user_input)
+    return jsonify({"response": response})
+
+if __name__ == "__main__":
+    app.run(debug=True)
+templates/chat.html
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FAQ Chatbot</title>
+    <script>
+    async function sendMessage() {
+        let userInput = document.getElementById("userInput").value;
+        const response = await fetch("/ask", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({message: userInput})
+        });
+        const data = await response.json();
+        document.getElementById("chat").innerHTML += `<p><b>You:</b> ${userInput}</p>`;
+        document.getElementById("chat").innerHTML += `<p><b>Bot:</b> ${data.response}</p>`;
+        document.getElementById("userInput").value = "";
+    }
+    </script>
+</head>
+<body>
+    <h2>FAQ Chatbot</h2>
+    <div id="chat" style="border:1px solid #ccc; padding:10px; width:400px; height:300px; overflow:auto;"></div>
+    <input type="text" id="userInput" placeholder="Ask a question..." />
+    <button onclick="sendMessage()">Send</button>
+</body>
+</html>
